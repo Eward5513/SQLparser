@@ -257,6 +257,7 @@ public class SqlParser {
 	public static void main(String[] args) {
 		System.out.println("yes");
 		System.out.println("no");
+		System.out.println("yes no");
 		SqlParser test=new SqlParser();
 		String sql;
 		BufferedReader in=new BufferedReader(new InputStreamReader(System.in));
