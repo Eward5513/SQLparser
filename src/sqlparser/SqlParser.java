@@ -255,6 +255,7 @@ public class SqlParser {
 		System.out.println("Select:"+select);
 	}
 	public static void main(String[] args) {
+		System.out.println("yes");
 		SqlParser test=new SqlParser();
 		String sql;
 		BufferedReader in=new BufferedReader(new InputStreamReader(System.in));
