@@ -3,21 +3,24 @@
  */
 package sqlparser;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Scanner;
 
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.create.index.CreateIndex;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
+import net.sf.jsqlparser.statement.create.table.Index;
+import net.sf.jsqlparser.statement.create.view.CreateView;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.drop.Drop;
 import net.sf.jsqlparser.statement.insert.Insert;
@@ -68,75 +71,112 @@ public class SqlParser {
 			{
 				parser_update((Update)statement);
 			}
-			else if(statement instanceof Truncate)
-			{
-				parser_truncate((Truncate)statement);
-			}
 			else if(statement instanceof CreateTable)
 			{
 				parser_createTable((CreateTable)statement);
+			}
+			else if(statement instanceof CreateIndex)
+			{
+				parser_createIndex((CreateIndex)statement);
+			}
+			else if(statement instanceof CreateView)
+			{
+				parser_createView((CreateView)statement);
 			}
 		} catch (ParseException e) {
 			
 			e.printStackTrace();
 		}
 	}
+	private void parser_createView(CreateView createView) {
+		System.out.println("view name: "+createView.getView());
+		List<String> cols=createView.getColumnNames();
+		if(cols!=null)
+		{
+			System.out.print("columns: ");
+			Iterator<String> it = cols.iterator();
+			while(it.hasNext())
+				System.out.print(it.next()+" ");
+		}
+		SelectBody selectbody=createView.getSelectBody();
+		PlainSelect plainSelect=(PlainSelect)selectbody;
+		//selectItem
+		List<SelectItem> selectItem=plainSelect.getSelectItems();
+		if(selectItem != null)
+		{
+			Iterator<SelectItem> it=selectItem.iterator();
+			System.out.print("columns:");
+			while(it.hasNext())
+			{
+				System.out.print(it.next()+" ");
+			}
+		}	
+		System.out.println();
+		//FromItem
+		FromItem fromItem=plainSelect.getFromItem();
+		System.out.println("from:"+fromItem);
+		//where
+		Expression where=plainSelect.getWhere();
+		System.out.println("where:"+where);
+		//groupByColumnReferences
+		List<Expression> groupByColumnReferences=plainSelect.getGroupByColumnReferences();
+		if(groupByColumnReferences != null)
+		{
+			System.out.print("groupBy:");
+			Iterator<Expression> it=groupByColumnReferences.iterator();
+			while(it.hasNext())
+			{
+				System.out.print(it.next()+" ");
+			}
+			System.out.println();
+		}
+		//orderByElements
+		List<OrderByElement> orderByElements=plainSelect.getOrderByElements();
+		if(orderByElements != null)
+		{
+			Iterator<OrderByElement> it=orderByElements.iterator();
+			System.out.print("Order By");
+			while(it.hasNext())
+			{
+				System.out.print(it.next()+" ");
+			}
+			System.out.println();
+		}
+		//having
+		Expression having = plainSelect.getHaving();
+		System.out.println("having:"+having);
+	}
+	private void parser_createIndex(CreateIndex createIndex) {
+		System.out.println("table name: "+createIndex.getTable());
+		System.out.println("index name: "+createIndex.getIndex().getName());
+		Iterator<String> it=createIndex.getIndex().getColumnsNames().iterator();
+		System.out.print("columns: ");
+		while(it.hasNext())
+			System.out.print(it.next()+" ");
+	}
 	private void parser_select(Select select)
 	{
 		System.out.println("SqlParser: void parser_select(Select)");
 		SelectBody selectBody=select.getSelectBody();
-		System.out.println("selectBody: "+selectBody);
-		List<WithItem> withItemsList=select.getWithItemsList();
-		if(withItemsList != null)
-		{
-			Iterator<WithItem> it=select.getWithItemsList().iterator();
-			System.out.println("withItemsList:");
-			while(it.hasNext())
-			{
-				System.out.println("*"+it.next());
-			}
-			System.out.println();		
-		}
+		System.out.println("select: "+selectBody);
 		if(selectBody instanceof PlainSelect)
 		{
 			PlainSelect plainSelect=(PlainSelect)selectBody;
-			System.out.println("PalinSelect");
 			//selectItem
 			List<SelectItem> selectItem=plainSelect.getSelectItems();
 			if(selectItem != null)
 			{
 				Iterator<SelectItem> it=selectItem.iterator();
-				System.out.println("selectItems:");
+				System.out.print("columns:");
 				while(it.hasNext())
 				{
-					System.out.println("*"+it.next());
+					System.out.print(it.next()+" ");
 				}
-			}
-			//intoTables
-			List<Table> intoTables=plainSelect.getIntoTables();
-			if(intoTables != null)
-			{
-				Iterator<Table> it=intoTables.iterator();
-				System.out.println("intoTables:");
-				while(it.hasNext())
-				{
-					System.out.println("*"+it.next());
-				}
-			}		
+			}	
+			System.out.println();
 			//FromItem
 			FromItem fromItem=plainSelect.getFromItem();
-			System.out.println("fromItem:"+fromItem);
-			//joins
-			List<Join> joins=plainSelect.getJoins();
-			if(joins != null)
-			{
-				Iterator<Join> it=joins.iterator();
-				System.out.println("joins");
-				while(it.hasNext())
-				{
-					System.out.println("*"+it.next());
-				}
-			}
+			System.out.println("from:"+fromItem);
 			//where
 			Expression where=plainSelect.getWhere();
 			System.out.println("where:"+where);
@@ -144,100 +184,131 @@ public class SqlParser {
 			List<Expression> groupByColumnReferences=plainSelect.getGroupByColumnReferences();
 			if(groupByColumnReferences != null)
 			{
-				System.out.println("groupByColumnReferences:");
+				System.out.print("groupBy:");
 				Iterator<Expression> it=groupByColumnReferences.iterator();
 				while(it.hasNext())
 				{
-					System.out.println("*"+it.next());
+					System.out.print(it.next()+" ");
 				}
+				System.out.println();
 			}
 			//orderByElements
 			List<OrderByElement> orderByElements=plainSelect.getOrderByElements();
 			if(orderByElements != null)
 			{
 				Iterator<OrderByElement> it=orderByElements.iterator();
+				System.out.print("Order By");
 				while(it.hasNext())
 				{
-					System.out.println("*"+it.next());
+					System.out.print(it.next()+" ");
 				}
+				System.out.println();
 			}
 			//having
 			Expression having = plainSelect.getHaving();
 			System.out.println("having:"+having);
 		}
-		//else if(selectBody instanceof )
 	}
 	private void parser_delete(Delete delete)
 	{
-		System.out.println("SqlParser: void parser_delete(Delete)");
-		//to do something
+		System.out.println("Parser: void parser_delete(Delete)");
+		System.out.println("table_name:"+delete.getTable());
+		System.out.println("where: "+delete.getWhere());
 	}
 	private void parser_drop(Drop drop)
 	{
-		System.out.println("SqlParser: void parser_drop(Drop)");
-		//to do something
+		System.out.println("Parser: void parser_drop(Drop)");
+		System.out.println("type: "+drop.getType());
+		System.out.println("name: "+drop.getName());
+		System.out.println("option: "+drop.getParameters());
 	}
 	private void parser_insert(Insert insert)
 	{
-		System.out.println("SqlParser: void parser_insert(Insert)");
-//		to do something
+		System.out.println("Parser: void parser_insert(Insert)");
+		System.out.println("table: "+insert.getTable());
+		List<Column> cols=insert.getColumns();
+		if(cols!=null)
+		{
+			System.out.print("columns: ");
+			Iterator<Column> it=cols.iterator();
+			while(it.hasNext())
+				System.out.print(it.next()+" ");
+			System.out.println();
+		}
+		ExpressionList expressionList=((ExpressionList)insert.getItemsList());
+		if(expressionList!=null)
+		{
+			List<Expression> values=expressionList.getExpressions();
+			Iterator<Expression> is = values.iterator();
+			System.out.print("values: ");
+			while(is.hasNext())
+				System.out.print(is.next()+" ");
+		}
+
+		if(insert.getSelect()!=null)
+			parser_select(insert.getSelect());
 	}
 	private void parser_update(Update update)
 	{
-		System.out.println("SqlParser: void parser_update(Update)");
-		//to do something
-	}
-	private void parser_truncate(Truncate truncate)
-	{
-		System.out.println("SqlParser: void parser_truncate(Truncate)");
-		//to do something
+		System.out.println("Parser: void parser_update(Update)");
+		System.out.println("table name: "+update.getTables());
+		List<Column> cols=update.getColumns();
+		if(cols!=null)
+		{
+			System.out.print("columns: ");
+			Iterator<Column> it=cols.iterator();
+			while(it.hasNext())
+				System.out.print(it.next()+" ");
+		}
+		System.out.println();
+		List<Expression> exp=update.getExpressions();
+		if(exp!=null)
+		{
+			System.out.print("new value: ");
+			Iterator<Expression> it=exp.iterator();
+			while(it.hasNext())
+				System.out.print(it.next()+" ");
+		}
+		System.out.println();
+		if(update.getWhere()!=null)
+			System.out.println("where: "+update.getWhere());
 	}
 	private void parser_createTable(CreateTable createTable)
 	{
-		System.out.println("SqlParser: void parser_createTable(CreateTable)");
-		//tableOptionStrings
-		System.out.println("tableOptionsStrings:");
-		List<?> tableOptionStrings=createTable.getTableOptionsStrings();
-		if(tableOptionStrings != null)
-			{
-				Iterator<?> it=tableOptionStrings.iterator();
-				while(it.hasNext())
-				{
-					System.out.println("*"+it.next());
-				}
-			}
+		System.out.println("Parser: void parser_createTable(CreateTable)");
+		//table
+		Table table=createTable.getTable();
+		System.out.println("table:"+table);
 		//ColumnDefinitions
 		List<ColumnDefinition> columnDefinitions=createTable.getColumnDefinitions();
 		if(columnDefinitions != null)
 		{
-			System.out.println("columnDefinitions:");
+			System.out.println("columns:");
 			Iterator<ColumnDefinition> it=columnDefinitions.iterator();
 			while(it.hasNext())
 			{
 				ColumnDefinition columnDifinition=it.next();
 				StringBuilder show=new StringBuilder();
-				show.append("*columnName:").append(columnDifinition.getColumnName()).append(" ");
+				show.append("name:").append(columnDifinition.getColumnName()).append(" ");
 				//colDataType
 				ColDataType colDataType=columnDifinition.getColDataType();
 				//dataType
-				show.append("dataType:").append(colDataType.getDataType()).append(" ");
-				//argumentsStringList
+				show.append("type:").append(colDataType.getDataType()).append(" ");
+				//argumentsStringList					
+				show.append("option: ");
 				List<String> argumentsStringList=colDataType.getArgumentsStringList();
 				if(argumentsStringList != null)
 				{
 					Iterator<String> iter=argumentsStringList.iterator();
-					show.append("argumentsStirngList: ");
 					while(iter.hasNext())
 					{
 						show.append(iter.next()).append(" ");
 					}
 				}
 				//stringSet
-				show.append("CharacterSet:").append(colDataType.getCharacterSet());
 				List<String> columnSpecStrings=columnDifinition.getColumnSpecStrings();
 				if(columnSpecStrings != null)
 				{
-					show.append(" columnSpecString: ");
 					Iterator<String> ite=columnSpecStrings.iterator();
 					while(ite.hasNext())
 					{
@@ -246,28 +317,50 @@ public class SqlParser {
 				}
 				System.out.println(show);
 			}
+			List<Index> inds=createTable.getIndexes();
+			if(inds!=null)
+			{
+				System.out.println("indexs: ");
+				Iterator<Index> is=inds.iterator();
+				while(is.hasNext())
+				{
+					Index temp=is.next();
+					System.out.println("type: "+temp.getType());
+					Iterator<String> ia=temp.getColumnsNames().iterator();
+					System.out.print("column: ");
+					while(ia.hasNext())
+						System.out.print(ia.next()+" ");
+					System.out.println();
+				}
+			}	
 		}
-		//table
-		Table table=createTable.getTable();
-		System.out.println("table:"+table);
 		//select
 		Select select=createTable.getSelect();
-		System.out.println("Select:"+select);
+		System.out.println("select:"+select);
+		if(select!=null)
+			parser_select(select);
 	}
 	public static void main(String[] args) {
 		SqlParser test=new SqlParser();
 		String sql;
-		BufferedReader in=new BufferedReader(new InputStreamReader(System.in));
-		try {
-			while(true)
+		String select_sql="select cola,colb from table_a,table_b where a>=b and c<=d group by e,f having e<=123 or f>='456'";
+		String create_tab_sql = "create table tabl_a (cola int auto_increment, colb varchar (20),primary key (cola), foreign key (colb) references table_b(cola))";
+		String create_tab_sql2="create table table_a as select a,b from c,d";
+		String delete_sql="delete from table_a where a = 1 and b = 1";
+		String drop_sql1="drop index index_a cascade";
+		String drop_sql2="drop table table_a";
+		String insert_sql1="insert into table_a(col1,col2) value(123,'456')";
+		String insert_sql2="insert into table_a select * from table_b";
+		String insert_sql3="insert into table_a value(123,'abc')";
+		String update_sql="update table_a set cola = '123' where colb = 456";
+		String create_index_sql="create index ind ON tablea (col1,col2)";
+		String create_view_sql="create view view_a as select cola,colb from table_a,table_b";
+		Scanner input=new Scanner(System.in);
+		while(input.hasNext())
 			{
-				sql=in.readLine();
+				sql=input.nextLine();
 				test.parser(sql);
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 }
